@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || getUserRole(request.auth.uid) == 'admin');
+    }
+
+    // Drivers collection
+    match /drivers/{driverId} {
+      allow read, write: if request.auth != null && (request.auth.uid == driverId || getUserRole(request.auth.uid) == 'admin');
+    }
+
+    // Jobs collection
+    match /jobs/{jobId} {
+      allow read, write: if request.auth != null && (resource.data.driverId == request.auth.uid || getUserRole(request.auth.uid) == 'admin');
+    }
+
+    // Helper function to get user role
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+		// UsersTM collection
+    match /usersTM/{userId} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId);
+    }
+    
+    match /usersFM/{userId} {
+    // 1. User manages their own profile
+    allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // 2. Head can read their family members
+    allow read: if request.auth != null
+                && resource.data.familyOf == request.auth.uid;
+
+    // 3a. Family member can read siblings (same familyOf)
+    allow read: if request.auth != null
+                && resource.data.familyOf != null
+                && resource.data.familyOf == get(/databases/$(database)/documents/usersFM/$(request.auth.uid)).data.familyOf;
+
+    // 3b. Family member can read their head
+    allow read: if request.auth != null
+                && resource.data.role == "Head of Family"
+                && resource.id == get(/databases/$(database)/documents/usersFM/$(request.auth.uid)).data.familyOf;
+
+    // 4. Invited member can read head profile before joining
+      allow read: if request.auth != null
+                  && resource.data.role == "Head of Family"
+                  && exists(/databases/$(database)/documents/invitationFM/$(resource.id + "_" + request.auth.token.email))
+                  && get(/databases/$(database)/documents/invitationFM/$(resource.id + "_" + request.auth.token.email)).data.status == "pending";
+  }
+
+
+    match /invitationFM/{inviteId} {
+      // Head who created the invite can create/update their invites
+      allow create, update, delete: if request.auth != null
+                                    && request.resource.data.familyHeadUid == request.auth.uid;
+
+      // Head can read their own invites
+      allow read: if request.auth != null
+                  && resource.data.familyHeadUid == request.auth.uid;
+
+      // Invited member can read their own invite
+      allow read: if request.auth != null
+                  && request.auth.token.email == resource.data.emailTo;
+
+      // Invited member can accept/decline (update status)
+      allow update: if request.auth != null
+                    && request.auth.token.email == resource.data.emailTo;
+    }
+  }
+}
