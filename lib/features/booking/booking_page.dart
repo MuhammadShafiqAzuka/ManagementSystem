@@ -1,56 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/place.dart';
+import '../auth/auth_provider.dart';
 import 'booking_provider.dart';
 
-class BookingPage extends ConsumerStatefulWidget {
+class BookingPage extends ConsumerWidget {
   final Place place;
   const BookingPage({super.key, required this.place});
 
   @override
-  ConsumerState<BookingPage> createState() => _BookingPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    Future<void> pickAndBookDate() async {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+        helpText: 'Select booking date',
+      );
 
-class _BookingPageState extends ConsumerState<BookingPage> {
-  DateTime? _selectedDate;
+      if (picked == null) return;
 
-  void _bookPlace() async {
-    if (_selectedDate == null) return;
-    // Demo user
-    const userId = 'demo-user';
-    await ref.read(bookingProvider).bookPlace(widget.place.id, userId, _selectedDate!);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking submitted!')));
-    Navigator.pop(context);
-  }
+      final user = ref.read(authStateProvider).maybeWhen(
+        data: (user) => user,
+        orElse: () => null,
+      );
 
-  @override
-  Widget build(BuildContext context) {
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('You must be logged in to book.')));
+        return;
+      }
+
+      await ref.read(bookingProvider).bookPlace(place.id, user.uid, picked);
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Booking submitted!')));
+      Navigator.pop(context);
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text('Book ${widget.place.name}')),
+      appBar: AppBar(title: Text('Book ${place.name}')),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              child: Text(_selectedDate == null
-                  ? 'Select Date'
-                  : _selectedDate.toString().split(' ')[0]),
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (picked != null) setState(() => _selectedDate = picked);
-              },
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              child: const Text('Book Now'),
-              onPressed: _bookPlace,
-            ),
-          ],
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.calendar_today),
+          label: const Text('Select Date & Book'),
+          onPressed: pickAndBookDate,
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(220, 50),
+          ),
         ),
       ),
     );

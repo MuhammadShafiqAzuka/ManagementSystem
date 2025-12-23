@@ -2,7 +2,7 @@ class Place {
   final String id;
   final String name;
   final String location;
-  final double pricePerDay;
+  final String pricePerDay;
 
   Place({
     required this.id,
@@ -16,7 +16,7 @@ class Place {
       id: id,
       name: json['name'],
       location: json['location'],
-      pricePerDay: (json['pricePerDay'] ?? 0).toDouble(),
+      pricePerDay: (json['pricePerDay']),
     );
   }
 }

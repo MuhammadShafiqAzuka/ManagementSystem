@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/firebase_service.dart';
-import '../../models/place.dart';
 
 final adminProvider = Provider((ref) => FirebaseService());
 

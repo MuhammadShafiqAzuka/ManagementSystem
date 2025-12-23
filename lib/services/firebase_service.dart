@@ -4,6 +4,7 @@ import '../models/place.dart';
 class FirebaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // get booking (user)
   Stream<List<Place>> getPlaces() {
     return _db.collection('places').snapshots().map(
           (snapshot) => snapshot.docs
@@ -12,6 +13,7 @@ class FirebaseService {
     );
   }
 
+  // create booking (user)
   Future<void> bookPlace(String placeId, String userId, DateTime date) async {
     await _db.collection('bookings').add({
       'placeId': placeId,
@@ -22,7 +24,7 @@ class FirebaseService {
     });
   }
 
-  // Get all bookings
+  // Get all bookings (admin)
   Stream<List<Map<String, dynamic>>> getBookings() {
     return _db.collection('bookings')
         .orderBy('createdAt', descending: true)
@@ -34,7 +36,7 @@ class FirebaseService {
     }).toList());
   }
 
-  // Approve or reject booking
+  // Approve or reject booking (admin)
   Future<void> updateBookingStatus(String bookingId, String status) async {
     await _db.collection('bookings').doc(bookingId).update({'status': status});
   }
